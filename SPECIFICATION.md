@@ -26,7 +26,7 @@ This framework is designed to be a comprehensive, open-source tool for LLM perfo
 ---
 
 ## 3. Speed & Memory Methodology
-> **Critical Requirement:** All speed and memory benchmarks must be performed at **100% Context Fill**. Partial context benchmarks are prohibited as they mask performance degradation and peak memory spikes.
+> **Critical Requirement:** All speed and memory benchmarks must be performed as close as possible to **100% Context Fill**. Partial context benchmarks are prohibited as they mask performance degradation and peak memory spikes.
 
 ### 3.1 Mandatory Metrics
 | Metric | Description | Requirement |
