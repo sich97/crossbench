@@ -16,7 +16,7 @@ CrossBench is built to get out of your way so you can focus on the data. Its des
 
 ## 🚀 Key Features
 
-* **Full Context Benchmarking**: Mandatory 100% context fill for all speed and memory tests to reveal true performance degradation and peak memory spikes.
+* **Full Context Benchmarking**: Mandatory ~100% context fill for all speed and memory tests to reveal true performance degradation and peak memory spikes.
 * **Folder-Based Discovery**: Simply drop your `.gguf` files into organized folders (e.g., `/dense` or `/moe`); the framework discovers them automatically.
 * **Peak Memory Monitoring**: Samples VRAM and System RAM every second to capture the maximum value observed, ensuring you see the true peak during initialization and KV cache allocation.
 * **Override Hierarchy**: Sophisticated variable resolution that cascades from Global → Model Group → Backend Group → Backend Version.
@@ -55,7 +55,7 @@ CrossBench rejects partial-context benchmarks as they often mask the memory and 
 
 | Metric | Requirement |
 | :--- | :--- |
-| **Full Context Fill** | Use 100% of configured context size via tokenizer metadata. |
+| **Full Context Fill** | Use ~100% of configured context size via tokenizer metadata. |
 | **TTFT/TPOT** | Measured specifically at full context utilization. |
 | **Peak VRAM/RAM** | Maximum memory observed during the entire run. |
 | **Scaling** | Automatically measures performance degradation from partial to full context. |
