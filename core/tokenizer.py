@@ -1,14 +1,71 @@
 """
 Tokenizer Integration - Generate prompts that fill ~100% of configured context size.
 
-Uses model-specific tokenizer logic to ensure accurate context utilization.
+Uses gguf library's built-in tokenizer for accurate token count estimation.
 """
 
 from typing import Optional, Tuple
 import os
 
 
-def get_tokenizer_from_gguf(model_path: str):
+class GGUFTokenizer:
+    """
+    Lightweight tokenizer wrapper using gguf library.
+
+    Only loads tokenizer vocabulary, not model weights.
+    Memory usage: ~10-50 MB
+    """
+
+    def __init__(self, model_path: str):
+        """
+        Initialize tokenizer from GGUF model file.
+
+        Args:
+            model_path: Path to the .gguf model file
+        """
+        import gguf
+
+        self.reader = gguf.GGUFReader(model_path)
+        self.tokenizer = self.reader.tokenizer
+
+    def encode(self, text: str) -> list:
+        """
+        Encode text to token IDs.
+
+        Args:
+            text: Input text string
+
+        Returns:
+            List of token IDs
+        """
+        return self.tokenizer.encode(text)
+
+    def decode(self, token_ids: list) -> str:
+        """
+        Decode token IDs to text.
+
+        Args:
+            token_ids: List of token IDs
+
+        Returns:
+            Decoded text string
+        """
+        return self.tokenizer.decode(token_ids)
+
+    def count_tokens(self, text: str) -> int:
+        """
+        Get token count for text.
+
+        Args:
+            text: Input text string
+
+        Returns:
+            Number of tokens
+        """
+        return len(self.encode(text))
+
+
+def get_tokenizer(model_path: str) -> Optional[GGUFTokenizer]:
     """
     Load tokenizer from GGUF model file using gguf library.
 
@@ -16,73 +73,16 @@ def get_tokenizer_from_gguf(model_path: str):
         model_path: Path to the .gguf model file
 
     Returns:
-        Tokenizer object or None if not available
+        GGUFTokenizer object or None if not available
     """
     try:
-        import gguf
-
-        reader = gguf.GGUFReader(model_path)
-        return reader
+        return GGUFTokenizer(model_path)
     except ImportError:
         print("Warning: gguf library not installed. Using fallback tokenizer.")
         return None
     except Exception as e:
         print(f"Warning: Could not load GGUF file: {e}")
         return None
-
-
-def get_tokenizer_from_llama_cpp(model_path: str):
-    """
-    Load tokenizer from GGUF model file using llama-cpp-python.
-
-    Args:
-        model_path: Path to the .gguf model file
-
-    Returns:
-        Llama tokenizer object or None if not available
-    """
-    try:
-        from llama_cpp import Llama
-
-        llm = Llama(model_path, n_ctx=1, verbose=False)
-        return llm
-    except ImportError:
-        print(
-            "Warning: llama-cpp-python library not installed. Using fallback tokenizer."
-        )
-        return None
-    except Exception as e:
-        print(f"Warning: Could not load model with llama-cpp-python: {e}")
-        return None
-
-
-def get_context_size_from_model(model_path: str) -> Optional[int]:
-    """
-    Extract context size from model metadata.
-
-    Args:
-        model_path: Path to the .gguf model file
-
-    Returns:
-        Context size in tokens or None if not found
-    """
-    # Try gguf library first
-    reader = get_tokenizer_from_gguf(model_path)
-    if reader:
-        try:
-            for kv in reader.fields.items():
-                if "context_length" in str(kv[0]).lower():
-                    return kv[1].value
-        except Exception:
-            pass
-
-    # Try llama-cpp-python
-    llm = get_tokenizer_from_llama_cpp(model_path)
-    if llm:
-        return llm.n_ctx()
-
-    # Fallback: return None
-    return None
 
 
 def generate_repetitive_text(target_tokens: int, token_sample: str = "The") -> str:
@@ -105,45 +105,51 @@ def generate_repetitive_text(target_tokens: int, token_sample: str = "The") -> s
     return text
 
 
-def generate_full_context_prompt(
-    ctx_size: int, model_path: str, use_actual_tokenizer: bool = True
-) -> Tuple[str, int]:
+def generate_full_context_prompt(ctx_size: int, model_path: str) -> Tuple[str, int]:
     """
-    Generate a prompt that fills ~100% of the configured context size.
+    Generate a prompt that fills ~90% of the configured context size.
+
+    Uses gguf library tokenizer for accurate token count estimation.
+    Targets 90% to prevent accidentally exceeding context limit.
 
     Args:
         ctx_size: Target context size in tokens (from --ctx-size)
         model_path: Path to the model file for tokenizer
-        use_actual_tokenizer: Whether to use actual tokenizer (requires library)
 
     Returns:
         Tuple of (prompt_string, actual_token_count)
     """
-    if use_actual_tokenizer:
-        # Try to use actual tokenizer
-        llm = get_tokenizer_from_llama_cpp(model_path)
-        if llm:
-            # Generate prompt using model's tokenizer
-            # Start with a base text and expand until we reach target
-            base_text = "The quick brown fox jumps over the lazy dog. "
-            prompt = base_text
-            token_count = len(llm.tokenize(prompt.encode()))
+    # Try to use actual tokenizer
+    tokenizer = get_tokenizer(model_path)
 
-            # Expand until we're close to target (within 5%)
-            max_iterations = 100
-            for _ in range(max_iterations):
-                if token_count >= ctx_size * 0.95:
-                    break
-                prompt = base_text * (
-                    (token_count // len(llm.tokenize(base_text.encode()))) + 1
-                )
-                token_count = len(llm.tokenize(prompt.encode()))
+    if tokenizer:
+        # Generate prompt using model's tokenizer
+        # Start with a base text and expand until we reach target
+        base_text = "The quick brown fox jumps over the lazy dog. "
 
-            return prompt, token_count
+        # Calculate target (90% to be safe)
+        target_tokens = int(ctx_size * 0.90)
+
+        # Get base token count
+        base_tokens = tokenizer.count_tokens(base_text)
+
+        if base_tokens == 0:
+            base_tokens = 1  # Prevent division by zero
+
+        # Calculate how many repetitions we need
+        repetitions = (target_tokens // base_tokens) + 1
+
+        # Build prompt
+        prompt = base_text * repetitions
+
+        # Get actual token count
+        actual_tokens = tokenizer.count_tokens(prompt)
+
+        return prompt, actual_tokens
 
     # Fallback: use repetitive text generation
-    # Target 95-100% of ctx_size
-    target = int(ctx_size * 0.98)
+    # Target 90% of ctx_size (safe margin)
+    target = int(ctx_size * 0.90)
     prompt = generate_repetitive_text(target, "The ")
 
     # Estimate token count (rough approximation)
@@ -163,9 +169,9 @@ def get_token_count(prompt: str, model_path: str) -> int:
     Returns:
         Token count
     """
-    llm = get_tokenizer_from_llama_cpp(model_path)
-    if llm:
-        return len(llm.tokenize(prompt.encode()))
+    tokenizer = get_tokenizer(model_path)
+    if tokenizer:
+        return tokenizer.count_tokens(prompt)
 
     # Fallback: word count approximation
     return len(prompt.split())
