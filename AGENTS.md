@@ -44,7 +44,7 @@ Accuracy is paramount. You must implement specific measurement behaviors for spe
 ### Mandatory Execution Flow:
 | Task | Implementation Detail |
 | :--- | :--- |
-| **Tokenizer Integration** | Use `gguf-py` or `llama-cpp-python` to read the model's internal metadata. You **must** generate a prompt that gets as close as possible to 100% of the `--ctx-size`. |
+| **Tokenizer Integration** | Use `gguf` library to read the model's internal metadata. You **must** generate a prompt that gets as close as possible to 100% of the `--ctx-size`. |
 | **Peak Memory Sampling** | Start a background thread/process that polls VRAM (ROCm) and System RAM **every 1 second** during the entire run. |
 | **Record Maximums** | Do not record the final memory state; record the **highest value observed** during the lifecycle of the process. |
 

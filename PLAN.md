@@ -39,7 +39,7 @@ crossbench/
 
 ### 1.2 Dependencies (requirements.txt)
 - `pyyaml` or `ruamel.yaml` (YAML parsing)
-- `gguf` or `llama-cpp-python` (tokenizer integration)
+- `gguf` (tokenizer integration)
 - `sqlite3` (built-in)
 - `streamlit` + `plotly` (Web UI)
 - `docker` (Python SDK for container management)
@@ -138,9 +138,9 @@ crossbench/
 
 **Implementation Steps**:
 1. Create `load_model_metadata(model_path)` function:
-   - Uses `gguf` or `llama-cpp-python` library
-   - Reads tokenizer vocabulary and context size from model file
-   - Returns token ID for common start tokens (e.g., "The")
+    - Uses `gguf` library
+    - Reads tokenizer vocabulary and context size from model file
+    - Returns token ID for common start tokens (e.g., "The")
 
 2. Create `generate_full_context_prompt(ctx_size, model_path)` function:
    - Calculates target token count based on `--ctx-size`
@@ -472,7 +472,7 @@ crossbench/
 |------|------------|
 | Docker SDK compatibility issues | Use official Python Docker SDK, test on target platform |
 | ROCm VRAM monitoring unreliable | Fall back to system RAM monitoring if ROCm unavailable |
-| Tokenizer library incompatibility | Support both `gguf` and `llama-cpp-python` libraries |
+| Tokenizer library incompatibility | Use `gguf` library which is lightweight and has no compilation requirements |
 | Streamlit performance with large datasets | Implement pagination and server-side filtering |
 | Container IP detection delays | Add retry logic with exponential backoff |
 

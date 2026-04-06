@@ -107,10 +107,10 @@ def generate_repetitive_text(target_tokens: int, token_sample: str = "The") -> s
 
 def generate_full_context_prompt(ctx_size: int, model_path: str) -> Tuple[str, int]:
     """
-    Generate a prompt that fills ~90% of the configured context size.
+    Generate a prompt that fills ~95% of the configured context size.
 
     Uses gguf library tokenizer for accurate token count estimation.
-    Targets 90% to prevent accidentally exceeding context limit.
+    Targets 95% to prevent accidentally exceeding context limit.
 
     Args:
         ctx_size: Target context size in tokens (from --ctx-size)
@@ -127,8 +127,8 @@ def generate_full_context_prompt(ctx_size: int, model_path: str) -> Tuple[str, i
         # Start with a base text and expand until we reach target
         base_text = "The quick brown fox jumps over the lazy dog. "
 
-        # Calculate target (90% to be safe)
-        target_tokens = int(ctx_size * 0.90)
+        # Calculate target (95% to be safe)
+        target_tokens = int(ctx_size * 0.95)
 
         # Get base token count
         base_tokens = tokenizer.count_tokens(base_text)
@@ -148,8 +148,8 @@ def generate_full_context_prompt(ctx_size: int, model_path: str) -> Tuple[str, i
         return prompt, actual_tokens
 
     # Fallback: use repetitive text generation
-    # Target 90% of ctx_size (safe margin)
-    target = int(ctx_size * 0.90)
+    # Target 95% of ctx_size (safe margin)
+    target = int(ctx_size * 0.95)
     prompt = generate_repetitive_text(target, "The ")
 
     # Estimate token count (rough approximation)
