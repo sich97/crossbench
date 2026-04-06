@@ -1,0 +1,42 @@
+# CrossBench Configuration File
+# =============================
+# This is a template configuration file for CrossBench.
+# Customize it according to your benchmarking needs.
+
+# Global variables - applied to all benchmarks
+# Single-element lists [value] are static (no iteration)
+# Multi-element lists [val1, val2] are benchmark dimensions (iterate)
+variables:
+  --ctx-size: [4096, 8192]        # Benchmark these context sizes
+  --n-predict: [128]              # Static: generate 128 output tokens
+
+# Model groups - organize models into categories
+# Each group specifies a path and optional variables
+model_groups:
+  dense_models:
+    path: ./models/dense/         # Path to dense model files
+    variables:
+      --n-gpu-layers: [-1, 35]    # Benchmark full vs partial GPU offload
+  
+  moe_models:
+    path: ./models/moe/           # Path to MoE model files
+    variables:
+      --n-cpu-moe: [4, 8, 16]     # Benchmark different CPU MoE layers
+
+# Backend configurations
+# Each backend specifies a command template and variables
+backends:
+  llama.cpp:
+    command_template: |
+      llama-server --port 1234 -m /models/model.gguf {{ benchmark_params }}
+    variables:
+      --batch-size: [512]         # Static: batch size
+      --flash-attn: [true, false] # Benchmark with/without Flash Attention
+
+# Backend version overrides (optional)
+# Use to specify different backend versions
+backend_versions:
+  llama.cpp-cuda:
+    image: ghcr.io/ggerganov/llama.cpp:latest-cuda
+    variables:
+      --flash-attn: [true]        # Force Flash Attention for CUDA

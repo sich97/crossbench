@@ -205,3 +205,17 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# CrossBench specific
+results.db
+benchmark_results.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Model files (large binary files)
+models/*.gguf
+models/*.GGUF
+
+# Configuration (optional - keep config.yaml in repo)
+# config.yaml
