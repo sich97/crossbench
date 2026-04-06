@@ -351,8 +351,22 @@ def run_dashboard(db_path: str):
     st.sidebar.header("Filters")
 
     # Get unique values for filters
-    model_groups = sorted(df["model_group"].unique())
-    backends = sorted(df["backend_name"].unique())
+    model_groups = (
+        sorted(df["model_group"].unique()) if "model_group" in df.columns else []
+    )
+    backends = (
+        sorted(df["backend_name"].unique()) if "backend_name" in df.columns else []
+    )
+    backend_versions = (
+        sorted(df["backend_version"].unique())
+        if "backend_version" in df.columns
+        else []
+    )
+
+    # Filter out NaN values
+    model_groups = [g for g in model_groups if pd.notna(g)]
+    backends = [b for b in backends if pd.notna(b)]
+    backend_versions = [v for v in backend_versions if pd.notna(v)]
 
     selected_groups = st.sidebar.multiselect(
         "Model Groups", options=model_groups, default=model_groups
@@ -362,11 +376,20 @@ def run_dashboard(db_path: str):
         "Backends", options=backends, default=backends
     )
 
+    selected_versions = st.sidebar.multiselect(
+        "Backend Versions", options=backend_versions, default=backend_versions
+    )
+
     # Filter data
     filtered_df = df[
         (df["model_group"].isin(selected_groups))
         & (df["backend_name"].isin(selected_backends))
     ]
+
+    if selected_versions and backend_versions:
+        filtered_df = filtered_df[
+            filtered_df["backend_version"].isin(selected_versions)
+        ]
 
     st.sidebar.markdown(f"### Results: {len(filtered_df)} benchmarks")
 
@@ -405,17 +428,22 @@ def run_dashboard(db_path: str):
 
         # Data table
         st.subheader("Benchmark Results")
+        columns_to_show = [
+            "model_path",
+            "backend_name",
+        ]
+        if "backend_version" in filtered_df.columns:
+            columns_to_show.append("backend_version")
+        columns_to_show.extend(
+            [
+                "ttft_ms",
+                "tpot_ms",
+                "throughput_toks_s",
+                "peak_vram_mb",
+            ]
+        )
         st.dataframe(
-            filtered_df[
-                [
-                    "model_path",
-                    "backend_name",
-                    "ttft_ms",
-                    "tpot_ms",
-                    "throughput_toks_s",
-                    "peak_vram_mb",
-                ]
-            ].head(50),
+            filtered_df[columns_to_show].head(50),
             use_container_width=True,
         )
 
