@@ -24,19 +24,25 @@ model_groups:
       --n-cpu-moe: [4, 8, 16]     # Benchmark different CPU MoE layers
 
 # Backend configurations
-# Each backend specifies a command template and variables
+# Each backend specifies a command template and versions array
+# Versions are benchmark dimensions - each version creates separate test runs
 backends:
   llama.cpp:
     command_template: |
       llama-server --port 1234 -m /models/model.gguf {{ benchmark_params }}
-    variables:
-      --batch-size: [512]         # Static: batch size
-      --flash-attn: [true, false] # Benchmark with/without Flash Attention
-
-# Backend version overrides (optional)
-# Use to specify different backend versions
-backend_versions:
-  llama.cpp-cuda:
-    image: ghcr.io/ggerganov/llama.cpp:latest-cuda
-    variables:
-      --flash-attn: [true]        # Force Flash Attention for CUDA
+    versions:
+      - name: cpu
+        image: ghcr.io/ggerganov/llama.cpp:latest
+        variables:
+          --batch-size: [512]
+          --flash-attn: [false]
+      - name: cuda
+        image: ghcr.io/ggerganov/llama.cpp:latest-cuda
+        variables:
+          --batch-size: [512]
+          --flash-attn: [true]
+      - name: vulkan
+        image: ghcr.io/ggerganov/llama.cpp:latest-vulkan
+        variables:
+          --batch-size: [512]
+          --flash-attn: [false]

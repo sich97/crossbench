@@ -14,13 +14,13 @@ class TestVariableEngine(unittest.TestCase):
     def test_is_static_variable_single_element(self):
         """Test that single-element list is static."""
         self.assertTrue(is_static_variable([4096]))
-        self.assertTrue(is_static_variable([true]))
+        self.assertTrue(is_static_variable([True]))
         self.assertTrue(is_static_variable([512]))
 
     def test_is_static_variable_multi_element(self):
         """Test that multi-element list is a dimension."""
         self.assertFalse(is_static_variable([4096, 8192]))
-        self.assertFalse(is_static_variable([true, false]))
+        self.assertFalse(is_static_variable([True, False]))
         self.assertFalse(is_static_variable([1, 2, 3]))
 
     def test_is_static_variable_non_list(self):
@@ -34,7 +34,7 @@ class TestVariableEngine(unittest.TestCase):
         variables = {
             "--ctx-size": [4096, 8192],  # dimension
             "--batch-size": [512],  # static
-            "--flash-attn": [true, false],  # dimension
+            "--flash-attn": [True, False],  # dimension
             "--n-predict": 128,  # static (non-list)
         }
 
@@ -50,7 +50,7 @@ class TestVariableEngine(unittest.TestCase):
         self.assertIn("--ctx-size", dimensions)
         self.assertEqual(dimensions["--ctx-size"], [4096, 8192])
         self.assertIn("--flash-attn", dimensions)
-        self.assertEqual(dimensions["--flash-attn"], [true, false])
+        self.assertEqual(dimensions["--flash-attn"], [True, False])
 
         # Check lengths
         self.assertEqual(len(static), 2)

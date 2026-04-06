@@ -23,15 +23,15 @@ class TestCartesianProduct(unittest.TestCase):
 
     def test_generate_combinations_multiple_dimensions(self):
         """Test generation with multiple dimension variables."""
-        dimensions = {"--ctx-size": [4096, 8192], "--flash-attn": [true, false]}
+        dimensions = {"--ctx-size": [4096, 8192], "--flash-attn": [True, False]}
 
         combinations = generate_combinations(dimensions)
 
         self.assertEqual(len(combinations), 4)
-        self.assertIn({"--ctx-size": 4096, "--flash-attn": true}, combinations)
-        self.assertIn({"--ctx-size": 4096, "--flash-attn": false}, combinations)
-        self.assertIn({"--ctx-size": 8192, "--flash-attn": true}, combinations)
-        self.assertIn({"--ctx-size": 8192, "--flash-attn": false}, combinations)
+        self.assertIn({"--ctx-size": 4096, "--flash-attn": True}, combinations)
+        self.assertIn({"--ctx-size": 4096, "--flash-attn": False}, combinations)
+        self.assertIn({"--ctx-size": 8192, "--flash-attn": True}, combinations)
+        self.assertIn({"--ctx-size": 8192, "--flash-attn": False}, combinations)
 
     def test_generate_combinations_empty(self):
         """Test generation with no dimensions."""
@@ -61,7 +61,7 @@ class TestCartesianProduct(unittest.TestCase):
         variables = {
             "--ctx-size": [4096, 8192],  # dimension
             "--batch-size": [512],  # static
-            "--flash-attn": [true, false],  # dimension
+            "--flash-attn": [True, False],  # dimension
             "--n-predict": 128,  # static
         }
 

@@ -78,7 +78,7 @@ backends:
         """Test variable hierarchy resolution."""
         config = load_config(self.temp_files["hierarchy"])
 
-        resolved = resolve_hierarchy(config)
+        resolved = resolve_hierarchy(config, "llama.cpp")
 
         # Global variables
         self.assertIn("--ctx-size", resolved)
@@ -91,7 +91,7 @@ backends:
 
         # Backend group variables
         self.assertIn("--flash-attn", resolved)
-        self.assertEqual(resolved["--flash-attn"], [true, false])
+        self.assertEqual(resolved["--flash-attn"], [True, False])
 
 
 if __name__ == "__main__":

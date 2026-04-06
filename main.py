@@ -18,6 +18,8 @@ from core.config import (
     resolve_hierarchy,
     get_all_model_groups,
     get_backend_config,
+    get_all_backend_versions,
+    get_version_image,
 )
 from core.variable_engine import classify_variables
 from core.cartesian import expand_all_variables
@@ -25,10 +27,10 @@ from core.command_builder import render_command
 from core.model_discovery import discover_models, get_model_metadata
 from storage.database import (
     init_database,
-    hash_config_file,
     insert_benchmark,
     get_hardware_metadata,
 )
+from storage.hasher import hash_config_file
 from execution.docker_runner import (
     spawn_container,
     wait_for_container_ready,
@@ -145,15 +147,27 @@ def run_benchmark(config_path: str, db_path: str) -> None:
         models = discover_models(group_path)
         print(f"      Found {len(models)} models")
 
-        # Resolve variables for this group
-        group_variables = group_config.get("variables", {})
-        resolved_variables = resolve_hierarchy(config)
+        # Get backend config
+        backend_name = (
+            list(config.get("backends", {}).keys())[0]
+            if config.get("backends")
+            else "llama.cpp"
+        )
+        backend_config = get_backend_config(config, backend_name)
 
-        print(f"      Resolved variables: {len(resolved_variables)}")
+        if not backend_config:
+            print(f"      Warning: Backend '{backend_name}' not found")
+            continue
 
-        # Expand variables into combinations
-        combinations = expand_all_variables(resolved_variables)
-        print(f"      Generated {len(combinations)} test combinations")
+        # Get all versions for this backend
+        versions = get_all_backend_versions(config, backend_name)
+        if not versions:
+            print(f"      Warning: No versions defined for backend '{backend_name}'")
+            continue
+
+        print(
+            f"      Found {len(versions)} backend versions: {', '.join([v.get('name') for v in versions])}"
+        )
 
         # Process each model
         for model in models:
@@ -166,48 +180,55 @@ def run_benchmark(config_path: str, db_path: str) -> None:
             # Get model metadata
             model_meta = get_model_metadata(model_path)
 
-            for i, combo in enumerate(combinations):
-                print(f"\n[6/7] Running test {i + 1}/{len(combinations)}...")
+            # Process each version
+            for version in versions:
+                version_name = version.get("name")
+                version_image = version.get("image")
+                version_variables = version.get("variables", {})
 
-                # Get backend config
-                backend_name = (
-                    list(config.get("backends", {}).keys())[0]
-                    if config.get("backends")
-                    else "llama.cpp"
+                print(f"\n[6/7] Running version: {version_name}")
+
+                # Resolve variables for this version
+                resolved_variables = resolve_hierarchy(
+                    config, backend_name, version_name
                 )
-                backend_config = get_backend_config(config, backend_name)
 
-                if not backend_config:
-                    print(
-                        f"      Warning: Backend '{backend_name}' not found, using default"
-                    )
-                    template = "llama-server --port 1234 -m /models/model.gguf {{ benchmark_params }}"
-                else:
-                    template = backend_config.get(
-                        "command_template",
-                        "llama-server --port 1234 -m /models/model.gguf {{ benchmark_params }}",
-                    )
+                # Add version info to variables
+                resolved_variables["_backend_version"] = version_name
+                resolved_variables["_backend_image"] = version_image
 
-                # Render command
-                rendered_command = render_command(template, combo)
-                print(f"      Command: {rendered_command[:100]}...")
+                # Expand variables into combinations
+                combinations = expand_all_variables(resolved_variables)
+                print(f"      Generated {len(combinations)} test combinations")
 
-               if args.dry_run:
-                    print(f"      [DRY RUN] Skipping execution")
-                    continue
+                template = backend_config.get(
+                    "command_template",
+                    "llama-server --port 1234 -m /models/model.gguf {{ benchmark_params }}",
+                )
 
-                # Create run data
-                run_data = {
-                    "config_hash": config_hash,
-                    "model_path": model_path,
-                    "model_group": group_name,
-                    "backend_name": backend_name,
-                    "backend_version": None,
-                    "rendered_command": rendered_command,
-                    "variables": combo,
-                    "config_yaml": config_yaml_content,
-                    "hardware_metadata": hardware_metadata,
-                }
+                for i, combo in enumerate(combinations):
+                    print(f"      Running test {i + 1}/{len(combinations)}...")
+
+                    # Render command for this combination
+                    rendered_command = render_command(template, combo)
+                    print(f"      Command: {rendered_command[:100]}...")
+
+                    if args.dry_run:
+                        print(f"      [DRY RUN] Skipping execution")
+                        continue
+
+                    # Create run data
+                    run_data = {
+                        "config_hash": config_hash,
+                        "model_path": model_path,
+                        "model_group": group_name,
+                        "backend_name": backend_name,
+                        "backend_version": version_name,
+                        "rendered_command": rendered_command,
+                        "variables": combo,
+                        "config_yaml": config_yaml_content,
+                        "hardware_metadata": hardware_metadata,
+                    }
 
                 # Start memory monitor
                 print(f"      Starting memory monitor...")
@@ -215,10 +236,10 @@ def run_benchmark(config_path: str, db_path: str) -> None:
                 memory_monitor.start()
 
                 try:
-                    # Spawn container
+                    # Spawn container with version-specific image
                     print(f"      Spawning Docker container...")
                     container, container_ip = spawn_container(
-                        image="ghcr.io/ggerganov/llama.cpp:latest",
+                        image=version_image,
                         command=rendered_command,
                         model_path=model_path,
                     )

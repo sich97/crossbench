@@ -8,11 +8,11 @@ import os
 import json
 from storage.database import (
     init_database,
-    hash_config_file,
     insert_benchmark,
     query_benchmarks,
     get_hardware_metadata,
 )
+from storage.hasher import hash_config_file
 
 
 class TestDatabaseModule(unittest.TestCase):

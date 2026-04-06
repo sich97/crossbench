@@ -51,14 +51,18 @@ def deep_merge_dict(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str,
     return result
 
 
-def resolve_hierarchy(config: Dict[str, Any]) -> Dict[str, Any]:
+def resolve_hierarchy(
+    config: Dict[str, Any], backend_name: str, version_name: str = None
+) -> Dict[str, Any]:
     """
-    Resolve variable hierarchy from Global → Model Group → Backend Group → Backend Version.
+    Resolve variable hierarchy from Global → Model Group → Backend → Backend Version.
 
     The most specific definition always wins.
 
     Args:
         config: Parsed configuration dictionary
+        backend_name: Name of the backend (e.g., 'llama.cpp')
+        version_name: Optional version name for version-specific resolution
 
     Returns:
         Resolved variable dictionary with all overrides applied
@@ -72,17 +76,20 @@ def resolve_hierarchy(config: Dict[str, Any]) -> Dict[str, Any]:
         group_vars = group_config.get("variables", {})
         resolved = deep_merge_dict(resolved, group_vars)
 
-    # Apply backend group variables
+    # Apply backend variables
     backends = config.get("backends", {})
-    for backend_name, backend_config in backends.items():
-        backend_vars = backend_config.get("variables", {})
-        resolved = deep_merge_dict(resolved, backend_vars)
+    backend_config = backends.get(backend_name, {})
+    backend_vars = backend_config.get("variables", {})
+    resolved = deep_merge_dict(resolved, backend_vars)
 
     # Apply backend version variables (highest priority)
-    backend_versions = config.get("backend_versions", {})
-    for version_name, version_config in backend_versions.items():
-        version_vars = version_config.get("variables", {})
-        resolved = deep_merge_dict(resolved, version_vars)
+    if version_name:
+        versions = backend_config.get("versions", [])
+        for version in versions:
+            if version.get("name") == version_name:
+                version_vars = version.get("variables", {})
+                resolved = deep_merge_dict(resolved, version_vars)
+                break
 
     return resolved
 
@@ -147,3 +154,41 @@ def get_all_model_groups(config: Dict[str, Any]) -> list:
     """
     model_groups = config.get("model_groups", {})
     return list(model_groups.keys())
+
+
+def get_all_backend_versions(config: Dict[str, Any], backend_name: str) -> list:
+    """
+    Get list of all versions for a specific backend.
+
+    Args:
+        config: Parsed configuration dictionary
+        backend_name: Name of the backend
+
+    Returns:
+        List of version dictionaries with name, image, and variables
+    """
+    backends = config.get("backends", {})
+    backend_config = backends.get(backend_name, {})
+    versions = backend_config.get("versions", [])
+    return versions
+
+
+def get_version_image(
+    config: Dict[str, Any], backend_name: str, version_name: str
+) -> Optional[str]:
+    """
+    Get Docker image for a specific backend version.
+
+    Args:
+        config: Parsed configuration dictionary
+        backend_name: Name of the backend
+        version_name: Name of the version
+
+    Returns:
+        Docker image string or None if not found
+    """
+    versions = get_all_backend_versions(config, backend_name)
+    for version in versions:
+        if version.get("name") == version_name:
+            return version.get("image")
+    return None
