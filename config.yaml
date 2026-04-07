@@ -9,19 +9,27 @@
 variables:
   --ctx-size: [4096, 8192]        # Benchmark these context sizes
   --n-predict: [128]              # Static: generate 128 output tokens
+  --temp: [1.0]
+  --min-p: [0.0]
+  --top-k: [20]
+  --top-p: [0.95]
+  --repeat_penalty: [1.0]
+  --presence_penalty: [1.5]
+  --fit: [off]
+  --gpu-layers: [all]
+  --threads: [4]
+  --no-kv-unified: [ ]
+  --parallel: [1]
+  --no-mmap: [ ]
+  --tools: [all]
 
 # Model groups - organize models into categories
 # Each group specifies a path and optional variables
 model_groups:
-  dense_models:
-    path: ./models/dense/         # Path to dense model files
-    variables:
-      --n-gpu-layers: [-1, 35]    # Benchmark full vs partial GPU offload
-  
   moe_models:
-    path: ./models/moe/           # Path to MoE model files
+    path: /home/simon/ggufs/crossbench/moe/           # Path to MoE model files
     variables:
-      --n-cpu-moe: [4, 8, 16]     # Benchmark different CPU MoE layers
+      --n-cpu-moe: [32, 36, 40]     # Benchmark different CPU MoE layers
 
 # Backend configurations
 # Each backend specifies a command template and versions array
@@ -31,18 +39,13 @@ backends:
     command_template: |
       llama-server --port 1234 -m /models/model.gguf {{ benchmark_params }}
     versions:
-      - name: cpu
-        image: ghcr.io/ggerganov/llama.cpp:latest
+      - name: rocm
+        image: ghcr.io/ggml-org/llama.cpp:server-rocm-b8637
         variables:
           --batch-size: [512]
-          --flash-attn: [false]
-      - name: cuda
-        image: ghcr.io/ggerganov/llama.cpp:latest-cuda
-        variables:
-          --batch-size: [512]
-          --flash-attn: [true]
+          --flash-attn: [on]
       - name: vulkan
-        image: ghcr.io/ggerganov/llama.cpp:latest-vulkan
+        image: ghcr.io/ggml-org/llama.cpp:server-vulkan-b8637
         variables:
           --batch-size: [512]
-          --flash-attn: [false]
+          --flash-attn: [on]

@@ -89,13 +89,14 @@ Examples:
     return parser.parse_args()
 
 
-def run_benchmark(config_path: str, db_path: str) -> None:
+def run_benchmark(config_path: str, db_path: str, args) -> None:
     """
     Run entire benchmark suite.
 
     Args:
         config_path: Path to config.yaml
         db_path: Path to SQLite database
+        args: Parsed command-line arguments
     """
     print("=" * 60)
     print("CrossBench: LLM Benchmarking Framework")
@@ -342,7 +343,7 @@ def main():
         launch_ui(args.db)
     else:
         # Run benchmarks
-        run_benchmark(args.config, args.db)
+        run_benchmark(args.config, args.db, args)
 
 
 if __name__ == "__main__":
